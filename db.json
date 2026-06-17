@@ -1,0 +1,338 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "管理员",
+      "email": "admin@garden.com",
+      "role": "admin",
+      "phone": "13800138000",
+      "address": "花园管理办公室",
+      "avatar": "",
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "username": "张园丁",
+      "email": "zhang@garden.com",
+      "role": "gardener",
+      "phone": "13900139001",
+      "address": "阳光小区1栋",
+      "avatar": "",
+      "id": 2,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "username": "李园丁",
+      "email": "li@garden.com",
+      "role": "gardener",
+      "phone": "13900139002",
+      "address": "幸福小区2栋",
+      "avatar": "",
+      "id": 3,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "username": "王园丁",
+      "email": "wang@garden.com",
+      "role": "gardener",
+      "phone": "13900139003",
+      "address": "和平小区3栋",
+      "avatar": "",
+      "id": 4,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    }
+  ],
+  "plots": [
+    {
+      "plotNumber": "A01",
+      "area": 15.5,
+      "status": "available",
+      "location": "东区第一排",
+      "description": "阳光充足，适合种植蔬菜",
+      "id": 1,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "plotNumber": "A02",
+      "area": 12,
+      "status": "claimed",
+      "location": "东区第一排",
+      "description": "靠近水源，灌溉方便",
+      "id": 2,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "plotNumber": "A03",
+      "area": 18,
+      "status": "available",
+      "location": "东区第二排",
+      "description": "面积较大，适合多种作物",
+      "id": 3,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "plotNumber": "B01",
+      "area": 10,
+      "status": "maintenance",
+      "location": "西区第一排",
+      "description": "土壤改良中，暂不可认领",
+      "id": 4,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "plotNumber": "B02",
+      "area": 14.5,
+      "status": "available",
+      "location": "西区第一排",
+      "description": "通风良好，适合瓜果类",
+      "id": 5,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "plotNumber": "B03",
+      "area": 16,
+      "status": "claimed",
+      "location": "西区第二排",
+      "description": "有遮阳网，适合喜阴植物",
+      "id": 6,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "plotNumber": "C01",
+      "area": 20,
+      "status": "available",
+      "location": "南区",
+      "description": "靠近公共堆肥区",
+      "id": 7,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "plotNumber": "C02",
+      "area": 13,
+      "status": "available",
+      "location": "南区",
+      "description": "新开辟地块，土壤肥沃",
+      "id": 8,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    }
+  ],
+  "claims": [
+    {
+      "id": 1,
+      "plotId": 2,
+      "userId": 2,
+      "status": "approved",
+      "startDate": "2026-01-01",
+      "endDate": "2026-12-31",
+      "plantingPlan": "计划种植番茄、黄瓜和生菜",
+      "createdAt": "2026-06-17T21:41:51.636Z",
+      "approvedAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "id": 2,
+      "plotId": 6,
+      "userId": 3,
+      "status": "approved",
+      "startDate": "2026-01-01",
+      "endDate": "2026-12-31",
+      "plantingPlan": "主要种植绿叶蔬菜和香草",
+      "createdAt": "2026-06-17T21:41:51.636Z",
+      "approvedAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "id": 3,
+      "plotId": 1,
+      "userId": 4,
+      "status": "pending",
+      "startDate": "",
+      "endDate": "",
+      "plantingPlan": "想种一些根茎类蔬菜",
+      "createdAt": "2026-06-17T21:41:51.636Z",
+      "approvedAt": ""
+    }
+  ],
+  "journalEntries": [
+    {
+      "plotId": 2,
+      "userId": 2,
+      "date": "2026-03-01",
+      "planting": "播种番茄种子10粒，黄瓜种子8粒",
+      "fertilized": true,
+      "fertilizerType": "有机堆肥",
+      "pests": "",
+      "notes": "今天天气很好，适合播种",
+      "photos": [],
+      "id": 1,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "plotId": 2,
+      "userId": 2,
+      "date": "2026-03-15",
+      "planting": "番茄发芽了，长出2片真叶",
+      "fertilized": false,
+      "fertilizerType": "",
+      "pests": "",
+      "notes": "需要间苗，保持适当间距",
+      "photos": [],
+      "id": 2,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "plotId": 2,
+      "userId": 2,
+      "date": "2026-04-01",
+      "planting": "移栽黄瓜苗，搭建支架",
+      "fertilized": true,
+      "fertilizerType": "复合肥",
+      "pests": "发现少量蚜虫",
+      "notes": "用大蒜水喷雾防治蚜虫效果不错",
+      "photos": [],
+      "id": 3,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "plotId": 6,
+      "userId": 3,
+      "date": "2026-03-10",
+      "planting": "种植生菜、油麦菜、菠菜",
+      "fertilized": false,
+      "fertilizerType": "",
+      "pests": "",
+      "notes": "土壤湿度适中，出苗应该不错",
+      "photos": [],
+      "id": 4,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "plotId": 6,
+      "userId": 3,
+      "date": "2026-03-25",
+      "planting": "间苗，追施稀薄液肥",
+      "fertilized": true,
+      "fertilizerType": "腐熟饼肥水",
+      "pests": "",
+      "notes": "生菜长势喜人",
+      "photos": [],
+      "id": 5,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    }
+  ],
+  "announcements": [
+    {
+      "title": "公共区域维护排班通知",
+      "content": "各位园丁请注意，本月公共区域维护排班如下：\n第一周：张园丁\n第二周：李园丁\n第三周：王园丁\n第四周：全体园丁\n请各位按时完成维护工作，保持花园整洁。",
+      "type": "maintenance",
+      "priority": "important",
+      "createdBy": 1,
+      "validUntil": "2026-06-30",
+      "id": 1,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "title": "堆肥使用规则说明",
+      "content": "为了更好地使用公共堆肥区，请遵守以下规则：\n1. 只可投入植物性垃圾，禁止投入肉类、油脂等\n2. 请将大的枝叶切碎后再投入\n3. 定期翻动堆肥，促进腐熟\n4. 腐熟的堆肥可免费取用，但请适量\n感谢大家的配合！",
+      "type": "rule",
+      "priority": "normal",
+      "createdBy": 1,
+      "validUntil": "",
+      "id": 2,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "title": "夏季防虫温馨提示",
+      "content": "夏季来临，气温升高，病虫害进入高发期。建议大家：\n1. 定期检查叶片背面，及早发现虫害\n2. 优先使用生物防治方法，如天敌、大蒜水等\n3. 及时清除病叶病株，防止蔓延\n4. 保持通风透光，减少病害发生\n如有疑问可在群内交流。",
+      "type": "general",
+      "priority": "urgent",
+      "createdBy": 1,
+      "validUntil": "2026-08-31",
+      "id": 3,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    }
+  ],
+  "sharePosts": [
+    {
+      "userId": 2,
+      "title": "免费赠送番茄幼苗",
+      "description": "自家育苗多了20棵番茄幼苗，品种是千禧小番茄，抗病性强。免费赠送给需要的园丁，先到先得。",
+      "category": "seedling",
+      "quantity": 20,
+      "location": "花园入口保安室",
+      "contact": "微信：zhang123",
+      "status": "available",
+      "photos": [],
+      "id": 1,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "userId": 3,
+      "title": "分享生菜种子",
+      "description": "今年收获的生菜种子，已经晾干保存好。有约50克，免费分发给大家。适合秋播。",
+      "category": "seeds",
+      "quantity": 50,
+      "location": "C02地块",
+      "contact": "电话：13900139002",
+      "status": "reserved",
+      "photos": [],
+      "id": 2,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    }
+  ],
+  "bills": [
+    {
+      "plotId": 2,
+      "userId": 2,
+      "month": "2026-05",
+      "waterUsage": 2.5,
+      "electricityUsage": 1.2,
+      "waterFee": 12.5,
+      "electricityFee": 14.4,
+      "totalAmount": 26.9,
+      "status": "paid",
+      "paidAt": "2026-06-17T21:41:51.636Z",
+      "id": 1,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "plotId": 6,
+      "userId": 3,
+      "month": "2026-05",
+      "waterUsage": 3,
+      "electricityUsage": 0.8,
+      "waterFee": 15,
+      "electricityFee": 9.6,
+      "totalAmount": 24.6,
+      "status": "unpaid",
+      "paidAt": "",
+      "id": 2,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "plotId": 2,
+      "userId": 2,
+      "month": "2026-06",
+      "waterUsage": 1.8,
+      "electricityUsage": 1,
+      "waterFee": 9,
+      "electricityFee": 12,
+      "totalAmount": 21,
+      "status": "unpaid",
+      "paidAt": "",
+      "id": 3,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    },
+    {
+      "plotId": 6,
+      "userId": 3,
+      "month": "2026-06",
+      "waterUsage": 2.2,
+      "electricityUsage": 0.5,
+      "waterFee": 11,
+      "electricityFee": 6,
+      "totalAmount": 17,
+      "status": "unpaid",
+      "paidAt": "",
+      "id": 4,
+      "createdAt": "2026-06-17T21:41:51.636Z"
+    }
+  ]
+}

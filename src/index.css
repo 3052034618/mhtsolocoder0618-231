@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-cream font-body text-gray-800;
+    scroll-behavior: smooth;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-cream;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-secondary rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-lg p-6 border border-accent/20;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary to-secondary text-white px-6 py-3 rounded-xl font-medium
+           hover:from-secondary hover:to-primary transition-all duration-300 shadow-md
+           hover:shadow-lg transform hover:-translate-y-0.5;
+  }
+
+  .btn-secondary {
+    @apply bg-gradient-to-r from-soil to-amber-700 text-white px-6 py-3 rounded-xl font-medium
+           hover:from-amber-700 hover:to-soil transition-all duration-300 shadow-md
+           hover:shadow-lg transform hover:-translate-y-0.5;
+  }
+
+  .btn-accent {
+    @apply bg-gradient-to-r from-accent to-secondary text-white px-6 py-3 rounded-xl font-medium
+           hover:from-secondary hover:to-accent transition-all duration-300 shadow-md
+           hover:shadow-lg transform hover:-translate-y-0.5;
+  }
+}
+
+@layer utilities {
+  .animate-fadeIn {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  .animate-slideIn {
+    animation: slideIn 0.5s ease-out forwards;
+  }
+
+  .animate-hoverLift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .animate-hoverLift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(45, 106, 79, 0.15);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
