@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { db, getNextId, getPlotById, formatClaim } from '../db/init.js';
+import { db, getNextId, getPlotById, getUserById, formatClaim } from '../db/init.js';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth.js';
 import { addMonths, formatISO } from 'date-fns';
 
@@ -190,7 +190,6 @@ router.put('/:id/approve', authMiddleware, adminMiddleware, async (req: AuthRequ
 router.put('/:id/reject', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
     const claimId = parseInt(id);
 
     await db.read();
@@ -204,10 +203,10 @@ router.put('/:id/reject', authMiddleware, adminMiddleware, async (req: AuthReque
     }
 
     const claim = db.data.claims[claimIndex];
-    if (claim.status !== 'pending' && claim.status !== 'waiting') {
+    if (claim.status !== 'pending') {
       return res.status(400).json({
         success: false,
-        error: '该申请状态不允许审核'
+        error: '只有待审核的申请可以被拒绝'
       });
     }
 
@@ -229,6 +228,142 @@ router.put('/:id/reject', authMiddleware, adminMiddleware, async (req: AuthReque
     res.status(500).json({
       success: false,
       error: '操作失败'
+    });
+  }
+});
+
+router.put('/:id/move-to-waiting', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const claimId = parseInt(id);
+
+    await db.read();
+
+    const claimIndex = db.data.claims.findIndex(c => c.id === claimId);
+    if (claimIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        error: '认领申请不存在'
+      });
+    }
+
+    const claim = db.data.claims[claimIndex];
+    if (claim.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        error: '只有待审核的申请可以移入等待列表'
+      });
+    }
+
+    db.data.claims[claimIndex] = {
+      ...claim,
+      status: 'waiting'
+    };
+
+    await db.write();
+
+    const updatedClaim = db.data.claims[claimIndex];
+
+    res.json({
+      success: true,
+      data: formatClaim(updatedClaim),
+      message: '已移入等待列表'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: '操作失败'
+    });
+  }
+});
+
+router.put('/:id/release', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const claimId = parseInt(id);
+    const userId = req.user!.id;
+    const isAdmin = req.user!.role === 'admin';
+
+    await db.read();
+
+    const claimIndex = db.data.claims.findIndex(c => c.id === claimId);
+    if (claimIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        error: '认领记录不存在'
+      });
+    }
+
+    const claim = db.data.claims[claimIndex];
+    if (claim.userId !== userId && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: '无权限操作'
+      });
+    }
+
+    if (claim.status !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        error: '只有生效中的认领可以释放'
+      });
+    }
+
+    db.data.claims[claimIndex] = {
+      ...claim,
+      status: 'expired'
+    };
+
+    const plotIndex = db.data.plots.findIndex(p => p.id === claim.plotId);
+
+    const nextWaitingClaim = db.data.claims
+      .filter(c => c.plotId === claim.plotId && c.status === 'waiting')
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0];
+
+    let message = '地块已释放';
+    if (nextWaitingClaim) {
+      const nextClaimIndex = db.data.claims.findIndex(c => c.id === nextWaitingClaim.id);
+      const now = new Date();
+      const endDate = formatISO(addMonths(now, 12), { representation: 'date' });
+
+      db.data.claims[nextClaimIndex] = {
+        ...nextWaitingClaim,
+        status: 'pending',
+        startDate: formatISO(now, { representation: 'date' }),
+        endDate,
+        approvedAt: now.toISOString()
+      };
+
+      if (plotIndex !== -1) {
+        db.data.plots[plotIndex] = {
+          ...db.data.plots[plotIndex],
+          status: 'claimed'
+        };
+      }
+
+      const nextUser = getUserById(nextWaitingClaim.userId);
+      message = `地块已释放，已自动分配给等待队列中最早的申请人${nextUser ? '（' + nextUser.username + '）' : ''}，请管理员审核`;
+    } else {
+      if (plotIndex !== -1) {
+        db.data.plots[plotIndex] = {
+          ...db.data.plots[plotIndex],
+          status: 'available'
+        };
+      }
+      message = '地块已释放，当前没有等待申请，地块已恢复为空闲状态';
+    }
+
+    await db.write();
+
+    res.json({
+      success: true,
+      data: formatClaim(db.data.claims[claimIndex]),
+      message
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: '释放地块失败'
     });
   }
 });

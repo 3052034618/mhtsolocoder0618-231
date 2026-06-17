@@ -159,6 +159,18 @@ export const claims = {
     })
   },
 
+  moveToWaiting: async (id: number): Promise<Claim> => {
+    return requestData<Claim>(`/claims/${id}/move-to-waiting`, {
+      method: 'PUT'
+    })
+  },
+
+  releaseClaim: async (id: number): Promise<Claim> => {
+    return requestData<Claim>(`/claims/${id}/release`, {
+      method: 'PUT'
+    })
+  },
+
   renewClaim: async (id: number, data: { durationMonths: number }): Promise<Claim> => {
     return requestData<Claim>(`/claims/${id}/renew`, {
       method: 'PUT',

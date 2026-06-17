@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import type { Claim, Plot } from '../../shared/types.js';
 import { useStore } from '../store';
-import { claims as claimsApi, plots as plotsApi } from '../services/api';
+import { claims as claimsApi } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import { cn } from '@/lib/utils';
 
@@ -84,26 +84,20 @@ export default function Renewal() {
       const claimsData = await claimsApi.getClaims(params);
       
       const plotsWithClaims: PlotWithClaim[] = [];
-      const thirtyDays = 30 * 24 * 60 * 60 * 1000;
       
       for (const claim of claimsData) {
-        if (!claim.plotId) continue;
+        if (!claim.plotId || !claim.plot) continue;
         
         if (user?.role !== 'admin' && claim.userId !== user?.id) continue;
         
         const daysRemaining = getDaysRemaining(claim.endDate);
         if (daysRemaining > 30) continue;
         
-        try {
-          const plotData = await plotsApi.getPlot(claim.plotId);
-          if (plotData.status === 'claimed') {
-            plotsWithClaims.push({
-              ...plotData,
-              currentClaim: claim
-            } as PlotWithClaim);
-          }
-        } catch {
-          // Skip if plot not found
+        if (claim.plot.status === 'claimed') {
+          plotsWithClaims.push({
+            ...claim.plot,
+            currentClaim: claim
+          } as PlotWithClaim);
         }
       }
       
@@ -157,13 +151,8 @@ export default function Renewal() {
     if (!selectedPlot) return;
     setActionLoading(selectedPlot.id);
     try {
-      await plotsApi.updatePlot(selectedPlot.id, {
-        ...selectedPlot,
-        status: 'available',
-        currentGardener: undefined,
-        currentClaim: undefined
-      });
-      showToast('地块已释放', 'success');
+      await claimsApi.releaseClaim(selectedPlot.currentClaim.id);
+      showToast('地块已释放成功', 'success');
       setShowReleaseModal(false);
       fetchExpiringPlots();
     } catch (error) {

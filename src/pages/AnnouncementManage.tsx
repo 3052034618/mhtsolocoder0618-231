@@ -11,6 +11,7 @@ import {
   X,
   AlertCircle,
   Calendar,
+  Infinity,
 } from 'lucide-react';
 import type { Announcement } from '../../shared/types.js';
 import { useStore } from '../store';
@@ -23,10 +24,14 @@ const announcementSchema = z.object({
   content: z.string().min(1, '内容不能为空'),
   type: z.enum(['maintenance', 'rule', 'event', 'general']),
   priority: z.enum(['normal', 'important', 'urgent']),
-  validUntil: z.string().min(1, '有效期不能为空'),
+  validUntil: z.string().optional(),
+  permanent: z.boolean().optional(),
 });
 
-type AnnouncementForm = Required<z.infer<typeof announcementSchema>>;
+type AnnouncementForm = Required<Pick<z.infer<typeof announcementSchema>, 'title' | 'content' | 'type' | 'priority'>> & {
+  validUntil?: string;
+  permanent?: boolean;
+};
 
 const typeOptions = [
   { value: 'maintenance', label: '维护排班' },
@@ -69,6 +74,7 @@ export default function AnnouncementManage() {
     formState: { errors },
     reset,
     setValue,
+    watch,
   } = useForm<AnnouncementForm>({
     resolver: zodResolver(announcementSchema),
     defaultValues: {
@@ -77,8 +83,11 @@ export default function AnnouncementManage() {
       type: 'general',
       priority: 'normal',
       validUntil: '',
+      permanent: true,
     },
   });
+
+  const isPermanent = watch('permanent');
 
   const fetchAnnouncements = async () => {
     setLoading(true);
@@ -111,6 +120,7 @@ export default function AnnouncementManage() {
       type: 'general',
       priority: 'normal',
       validUntil: '',
+      permanent: true,
     });
     setShowModal(true);
   };
@@ -121,18 +131,27 @@ export default function AnnouncementManage() {
     setValue('content', announcement.content);
     setValue('type', announcement.type);
     setValue('priority', announcement.priority);
-    setValue('validUntil', announcement.validUntil.split('T')[0]);
+    const isPerm = !announcement.validUntil;
+    setValue('permanent', isPerm);
+    setValue('validUntil', isPerm ? '' : announcement.validUntil.split('T')[0]);
     setShowModal(true);
   };
 
   const onSubmit = async (data: AnnouncementForm) => {
     setSubmitting(true);
     try {
+      const payload = {
+        title: data.title,
+        content: data.content,
+        type: data.type,
+        priority: data.priority,
+        validUntil: data.permanent ? '' : (data.validUntil || ''),
+      };
       if (editingAnnouncement) {
-        await announcements.updateAnnouncement(editingAnnouncement.id, data);
+        await announcements.updateAnnouncement(editingAnnouncement.id, payload);
         showToast('公告更新成功', 'success');
       } else {
-        await announcements.createAnnouncement(data);
+        await announcements.createAnnouncement(payload);
         showToast('公告创建成功', 'success');
       }
       setShowModal(false);
@@ -263,7 +282,14 @@ export default function AnnouncementManage() {
                         {new Date(announcement.createdAt).toLocaleDateString('zh-CN')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                        {new Date(announcement.validUntil).toLocaleDateString('zh-CN')}
+                        {announcement.validUntil ? (
+                          new Date(announcement.validUntil).toLocaleDateString('zh-CN')
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full">
+                            <Infinity className="w-3 h-3" />
+                            长期有效
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -392,21 +418,83 @@ export default function AnnouncementManage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Calendar className="w-4 h-4 inline mr-1" />
-                    有效期至
+                    有效期设置
                   </label>
-                  <input
-                    type="date"
-                    className={cn(
-                      'w-full px-4 py-3 rounded-xl border',
-                      errors.validUntil
-                        ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500'
-                        : 'border-gray-200 focus:ring-green-500/20 focus:border-green-500',
-                      'focus:outline-none focus:ring-2 transition-all'
-                    )}
-                    {...register('validUntil')}
-                  />
+                  <div className="flex items-start gap-3 mb-3">
+                    <label className="flex items-center gap-2 cursor-pointer p-3 rounded-xl border-2 transition-all flex-1"
+                      style={{
+                        borderColor: isPermanent ? '#16a34a' : '#e5e7eb',
+                        backgroundColor: isPermanent ? '#f0fdf4' : '#ffffff'
+                      }}>
+                      <input
+                        type="radio"
+                        className="sr-only"
+                        checked={isPermanent}
+                        onChange={(e) => {
+                          setValue('permanent', e.target.checked);
+                          if (e.target.checked) {
+                            setValue('validUntil', '');
+                          }
+                        }}
+                      />
+                      <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center"
+                        style={{ borderColor: isPermanent ? '#16a34a' : '#d1d5db' }}>
+                        {isPermanent && <div className="w-3 h-3 rounded-full bg-green-600" />}
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-800 flex items-center gap-1">
+                          <Infinity className="w-4 h-4 text-green-600" />
+                          长期有效
+                        </div>
+                        <div className="text-xs text-gray-500">适合规则说明、长期公告</div>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer p-3 rounded-xl border-2 transition-all flex-1"
+                      style={{
+                        borderColor: !isPermanent ? '#16a34a' : '#e5e7eb',
+                        backgroundColor: !isPermanent ? '#f0fdf4' : '#ffffff'
+                      }}>
+                      <input
+                        type="radio"
+                        className="sr-only"
+                        checked={!isPermanent}
+                        onChange={(e) => {
+                          setValue('permanent', !e.target.checked);
+                          if (!e.target.checked) {
+                            const tomorrow = new Date();
+                            tomorrow.setDate(tomorrow.getDate() + 30);
+                            setValue('validUntil', tomorrow.toISOString().split('T')[0]);
+                          }
+                        }}
+                      />
+                      <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center"
+                        style={{ borderColor: !isPermanent ? '#16a34a' : '#d1d5db' }}>
+                        {!isPermanent && <div className="w-3 h-3 rounded-full bg-green-600" />}
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-800 flex items-center gap-1">
+                          <Calendar className="w-4 h-4 text-gray-600" />
+                          设置截止日期
+                        </div>
+                        <div className="text-xs text-gray-500">适合活动通知、临时公告</div>
+                      </div>
+                    </label>
+                  </div>
+                  {!isPermanent && (
+                    <input
+                      type="date"
+                      className={cn(
+                        'w-full px-4 py-3 rounded-xl border',
+                        errors.validUntil
+                          ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500'
+                          : 'border-gray-200 focus:ring-green-500/20 focus:border-green-500',
+                        'focus:outline-none focus:ring-2 transition-all'
+                      )}
+                      {...register('validUntil')}
+                    />
+                  )}
                   {errors.validUntil && (
-                    <p className="mt-1 text-sm text-red-500">{errors.validUntil.message}</p>
+                    <p className="mt-1 text-sm text-red-500">{errors.validUntil.message as string}</p>
                   )}
                 </div>
 

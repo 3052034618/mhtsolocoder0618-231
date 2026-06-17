@@ -134,8 +134,8 @@ export default function ClaimReview() {
   const handleMoveToWaiting = async (claimId: number) => {
     setProcessingId(claimId);
     try {
-      await claims.rejectClaim(claimId, { reason: '移入等待队列' });
-      showToast('已移入等待列表', 'success');
+      await claims.moveToWaiting(claimId);
+      showToast('已移入等待列表，可在下方等待列表中查看排队顺序', 'success');
       fetchClaims();
     } catch (error) {
       showToast(error instanceof Error ? error.message : '操作失败', 'error');

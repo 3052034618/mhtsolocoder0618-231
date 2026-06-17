@@ -248,15 +248,22 @@ export default function Announcements() {
                             day: 'numeric',
                           })}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          有效期至{' '}
-                          {new Date(announcement.validUntil).toLocaleDateString('zh-CN', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </span>
+                        {announcement.validUntil ? (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            有效期至{' '}
+                            {new Date(announcement.validUntil).toLocaleDateString('zh-CN', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-green-600 font-medium">
+                            <Clock className="w-4 h-4" />
+                            长期有效
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

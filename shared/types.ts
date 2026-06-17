@@ -25,7 +25,7 @@ export interface Claim {
   id: number;
   plotId: number;
   userId: number;
-  status: 'pending' | 'approved' | 'rejected' | 'waiting';
+  status: 'pending' | 'approved' | 'rejected' | 'waiting' | 'expired';
   startDate: string;
   endDate: string;
   plantingPlan: string;
