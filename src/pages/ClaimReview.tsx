@@ -1,114 +1,63 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
-  ClipboardCheck,
-  Loader2,
-  User,
-  Calendar,
-  MapPin,
-  FileText,
-  Check,
-  X,
-  AlertCircle,
+  ShieldCheck,
+  XCircle,
   Clock,
-  Hourglass,
-  ChevronDown,
-  ChevronUp,
+  Loader2,
+  RefreshCw,
+  ArrowUp,
+  UserMinus,
+  Zap,
+  Info,
+  MapPin,
+  Leaf,
+  Users,
+  Timer,
 } from 'lucide-react';
-import type { Claim } from '../../shared/types.js';
 import { useStore } from '../store';
 import { claims } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import { cn } from '@/lib/utils';
+import type { Claim, Plot, User } from '../../shared/types.js';
 
-const approveSchema = z.object({
-  startDate: z.string().min(1, '请选择开始日期'),
-  durationMonths: z.coerce.number().min(1, '期限至少1个月').max(24, '期限最多24个月'),
-});
-
-type ApproveForm = z.infer<typeof approveSchema>;
+interface WaitingGroup {
+  plot: Plot;
+  queue: Array<Claim & { position: number }>;
+}
 
 export default function ClaimReview() {
   const { user, showToast } = useStore();
   const [pendingClaims, setPendingClaims] = useState<Claim[]>([]);
-  const [waitingClaims, setWaitingClaims] = useState<Claim[]>([]);
+  const [waitingGroups, setWaitingGroups] = useState<WaitingGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedClaimId, setExpandedClaimId] = useState<number | null>(null);
   const [processingId, setProcessingId] = useState<number | null>(null);
-  const [showWaitingList, setShowWaitingList] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    setValue,
-  } = useForm<ApproveForm>({
-    resolver: zodResolver(approveSchema),
-    defaultValues: {
-      startDate: '',
-      durationMonths: 6,
-    },
-  });
+  const [activeTab, setActiveTab] = useState<'pending' | 'waiting'>('pending');
 
   const fetchClaims = async () => {
-    if (user?.role !== 'admin') return;
     setLoading(true);
     try {
       const [pendingData, waitingData] = await Promise.all([
         claims.getClaims({ status: 'pending' }),
-        claims.getClaims({ status: 'waiting' }),
+        (claims as any).getWaitingGrouped(),
       ]);
-
-      const sortedPending = pendingData.sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-      const sortedWaiting = waitingData.sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-
-      setPendingClaims(sortedPending);
-      setWaitingClaims(sortedWaiting);
+      setPendingClaims(pendingData);
+      setWaitingGroups(waitingData);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : '获取申请列表失败', 'error');
+      showToast(error instanceof Error ? error.message : '获取数据失败', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user?.role !== 'admin') {
-      showToast('您没有权限访问此页面', 'error');
-      return;
-    }
     fetchClaims();
-  }, [user]);
+  }, []);
 
-  const handleExpand = (claimId: number) => {
-    if (expandedClaimId === claimId) {
-      setExpandedClaimId(null);
-      reset();
-    } else {
-      setExpandedClaimId(claimId);
-      const today = new Date();
-      today.setDate(today.getDate() + 1);
-      setValue('startDate', today.toISOString().split('T')[0]);
-      setValue('durationMonths', 6);
-    }
-  };
-
-  const onApprove = async (claimId: number, data: ApproveForm) => {
+  const handleApprove = async (claimId: number) => {
     setProcessingId(claimId);
     try {
-      await claims.approveClaim(claimId, {
-        startDate: data.startDate,
-        durationMonths: data.durationMonths,
-      });
+      await claims.approveClaim(claimId);
       showToast('申请已通过', 'success');
-      setExpandedClaimId(null);
-      reset();
       fetchClaims();
     } catch (error) {
       showToast(error instanceof Error ? error.message : '操作失败', 'error');
@@ -118,7 +67,6 @@ export default function ClaimReview() {
   };
 
   const handleReject = async (claimId: number) => {
-    if (!confirm('确定要拒绝这个申请吗？')) return;
     setProcessingId(claimId);
     try {
       await claims.rejectClaim(claimId);
@@ -144,332 +92,370 @@ export default function ClaimReview() {
     }
   };
 
-  if (user?.role !== 'admin') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">无权限访问</h2>
-          <p className="text-gray-500">此页面仅管理员可访问</p>
-        </div>
-      </div>
-    );
-  }
+  const handleMoveUp = async (claimId: number) => {
+    setProcessingId(claimId);
+    try {
+      await (claims as any).moveUpWaiting(claimId);
+      showToast('已提前一位', 'success');
+      fetchClaims();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : '操作失败', 'error');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleRemoveFromWaiting = async (claimId: number) => {
+    setProcessingId(claimId);
+    try {
+      await (claims as any).removeFromWaiting(claimId);
+      showToast('已移出等待队列', 'success');
+      fetchClaims();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : '操作失败', 'error');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleAssignNow = async (claimId: number) => {
+    setProcessingId(claimId);
+    try {
+      const result = await (claims as any).assignNow(claimId);
+      showToast(result?.message || '已直接分配', 'success');
+      fetchClaims();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : '操作失败', 'error');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const totalWaiting = waitingGroups.reduce((sum, g) => sum + g.queue.length, 0);
+  const totalPending = pendingClaims.length;
+  const plotsWithWaiting = waitingGroups.length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50">
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-            <ClipboardCheck className="w-8 h-8 text-green-600" />
+            <ShieldCheck className="w-8 h-8 text-green-600" />
             认领审核
           </h1>
-          <p className="text-gray-500">审核用户的地块认领申请</p>
+          <p className="text-gray-500">审核居民的地块认领申请，管理等待队列</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-800">{totalPending}</p>
+                <p className="text-xs text-gray-500">待审核申请</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-800">{totalWaiting}</p>
+                <p className="text-xs text-gray-500">等待中人数</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                <MapPin className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-800">{plotsWithWaiting}</p>
+                <p className="text-xs text-gray-500">有等待的地块</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={cn(
+              'px-6 py-2.5 rounded-xl font-medium text-sm transition-all flex items-center gap-2',
+              activeTab === 'pending'
+                ? 'bg-green-600 text-white shadow-lg shadow-green-600/20'
+                : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+            )}
+          >
+            <Clock className="w-4 h-4" />
+            待审核 ({totalPending})
+          </button>
+          <button
+            onClick={() => setActiveTab('waiting')}
+            className={cn(
+              'px-6 py-2.5 rounded-xl font-medium text-sm transition-all flex items-center gap-2',
+              activeTab === 'waiting'
+                ? 'bg-green-600 text-white shadow-lg shadow-green-600/20'
+                : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+            )}
+          >
+            <Timer className="w-4 h-4" />
+            等待列表 ({totalWaiting})
+          </button>
+          <button
+            onClick={fetchClaims}
+            className="ml-auto px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all flex items-center gap-2"
+          >
+            <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+            刷新
+          </button>
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20">
+          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-gray-100">
             <Loader2 className="w-12 h-12 text-green-600 animate-spin mb-4" />
             <p className="text-gray-500">加载中...</p>
           </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-orange-500" />
-                  待审核申请
-                  <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-sm rounded-full">
-                    {pendingClaims.length}
-                  </span>
-                </h2>
+        ) : activeTab === 'pending' ? (
+          pendingClaims.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <ShieldCheck className="w-10 h-10 text-green-600" />
               </div>
-
-              {pendingClaims.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Check className="w-8 h-8 text-green-600" />
-                  </div>
-                  <p className="text-gray-500">暂无待审核申请</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {pendingClaims.map((claim, index) => (
-                    <div
-                      key={claim.id}
-                      className={cn(
-                        'border rounded-xl overflow-hidden transition-all duration-200',
-                        expandedClaimId === claim.id
-                          ? 'border-green-300 bg-green-50/30'
-                          : 'border-gray-100 hover:border-gray-200 bg-white'
-                      )}
-                    >
-                      <div
-                        className="p-5 cursor-pointer"
-                        onClick={() => handleExpand(claim.id)}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center text-lg font-bold text-orange-600">
-                              {index + 1}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-3 mb-1">
-                                <h3 className="font-semibold text-gray-800">
-                                  {claim.user?.username || '未知用户'}
-                                </h3>
-                                <StatusBadge status={claim.status} />
-                              </div>
-                              <div className="flex items-center gap-4 text-sm text-gray-500">
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="w-4 h-4" />
-                                  地块 {claim.plot?.plotNumber || '未知'}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="w-4 h-4" />
-                                  {new Date(claim.createdAt).toLocaleDateString('zh-CN')}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {processingId === claim.id ? (
-                              <Loader2 className="w-5 h-5 text-green-600 animate-spin" />
-                            ) : expandedClaimId === claim.id ? (
-                              <ChevronUp className="w-5 h-5 text-gray-400" />
-                            ) : (
-                              <ChevronDown className="w-5 h-5 text-gray-400" />
-                            )}
-                          </div>
+              <h3 className="text-lg font-medium text-gray-700 mb-2">暂无待审核申请</h3>
+              <p className="text-gray-400 text-sm">所有申请都已处理完毕</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pendingClaims.map((claim) => (
+                <div
+                  key={claim.id}
+                  className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-3 mb-3">
+                        <StatusBadge status={claim.status} />
+                        <span className="text-sm text-gray-500">
+                          申请时间：{new Date(claim.createdAt).toLocaleString('zh-CN')}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">地块编号</p>
+                          <p className="font-semibold text-gray-800">
+                            {claim.plot?.plotNumber || '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">地块面积</p>
+                          <p className="font-semibold text-gray-800">
+                            {claim.plot?.area || '-'} ㎡
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">申请人</p>
+                          <p className="font-semibold text-gray-800">
+                            {claim.user?.username || '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">联系邮箱</p>
+                          <p className="font-semibold text-gray-800 text-sm truncate">
+                            {claim.user?.email || '-'}
+                          </p>
                         </div>
                       </div>
+                      <div className="bg-gray-50 rounded-xl p-4">
+                        <p className="text-xs text-gray-500 mb-1">种植计划</p>
+                        <p className="text-gray-700 text-sm leading-relaxed">
+                          {claim.plantingPlan || '未填写'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex lg:flex-col gap-2">
+                      <button
+                        onClick={() => handleApprove(claim.id)}
+                        disabled={processingId === claim.id}
+                        className="flex-1 lg:w-full px-6 py-2.5 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium text-sm hover:from-green-700 hover:to-emerald-700 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                      >
+                        {processingId === claim.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <ShieldCheck className="w-4 h-4" />
+                        )}
+                        通过
+                      </button>
+                      <button
+                        onClick={() => handleMoveToWaiting(claim.id)}
+                        disabled={processingId === claim.id}
+                        className="flex-1 lg:w-full px-6 py-2.5 rounded-xl bg-amber-50 text-amber-700 font-medium text-sm hover:bg-amber-100 border border-amber-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                      >
+                        <Clock className="w-4 h-4" />
+                        移入等待
+                      </button>
+                      <button
+                        onClick={() => handleReject(claim.id)}
+                        disabled={processingId === claim.id}
+                        className="flex-1 lg:w-full px-6 py-2.5 rounded-xl bg-red-50 text-red-600 font-medium text-sm hover:bg-red-100 border border-red-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        拒绝
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : waitingGroups.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
+            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+              <Users className="w-10 h-10 text-blue-600" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-700 mb-2">暂无等待队列</h3>
+            <p className="text-gray-400 text-sm">目前没有等待认领的申请</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {waitingGroups.map((group) => (
+              <div
+                key={group.plot.id}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+              >
+                <div className="bg-gradient-to-r from-green-600/5 to-emerald-600/5 px-6 py-4 border-b border-green-100">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold">
+                        <Leaf className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                          地块 {group.plot.plotNumber}
+                          <span className="text-sm font-normal text-gray-500">
+                            {group.plot.area} ㎡
+                          </span>
+                        </h3>
+                        <p className="text-sm text-gray-500">{group.plot.location}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">当前状态</p>
+                        <StatusBadge status={group.plot.status} />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">等待人数</p>
+                        <p className="text-xl font-bold text-green-600">{group.queue.length}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-                      {expandedClaimId === claim.id && (
-                        <div className="px-5 pb-5 border-t border-gray-100">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-5">
-                            <div>
-                              <h4 className="font-medium text-gray-800 mb-3 flex items-center gap-2">
-                                <User className="w-4 h-4 text-green-600" />
-                                申请人信息
-                              </h4>
-                              <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                                <div className="flex items-center gap-3">
-                                  <img
-                                    src={claim.user?.avatar || 'https://via.placeholder.com/48'}
-                                    alt={claim.user?.username}
-                                    className="w-12 h-12 rounded-full object-cover"
-                                  />
-                                  <div>
-                                    <p className="font-medium text-gray-800">
-                                      {claim.user?.username}
-                                    </p>
-                                    <p className="text-sm text-gray-500">{claim.user?.email}</p>
-                                  </div>
-                                </div>
-                                {claim.user?.phone && (
-                                  <p className="text-sm text-gray-600">
-                                    电话：{claim.user.phone}
-                                  </p>
-                                )}
-                                {claim.user?.address && (
-                                  <p className="text-sm text-gray-600">
-                                    地址：{claim.user.address}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-
-                            <div>
-                              <h4 className="font-medium text-gray-800 mb-3 flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-blue-600" />
-                                地块信息
-                              </h4>
-                              <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                                <p className="text-sm text-gray-600">
-                                  <span className="font-medium">地块编号：</span>
-                                  {claim.plot?.plotNumber || '未知'}
-                                </p>
-                                <p className="text-sm text-gray-600">
-                                  <span className="font-medium">位置：</span>
-                                  {claim.plot?.location || '未知'}
-                                </p>
-                                <p className="text-sm text-gray-600">
-                                  <span className="font-medium">面积：</span>
-                                  {claim.plot?.area || '未知'} ㎡
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {claim.plantingPlan && (
-                            <div className="mt-5">
-                              <h4 className="font-medium text-gray-800 mb-3 flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-purple-600" />
-                                种植计划
-                              </h4>
-                              <div className="bg-purple-50 rounded-xl p-4">
-                                <p className="text-gray-700">{claim.plantingPlan}</p>
-                              </div>
-                            </div>
-                          )}
-
-                          <form
-                            onSubmit={handleSubmit((data) => onApprove(claim.id, data))}
-                            className="mt-6 pt-5 border-t border-gray-100"
-                          >
-                            <h4 className="font-medium text-gray-800 mb-4">审核通过设置</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  开始日期
-                                </label>
-                                <input
-                                  type="date"
-                                  className={cn(
-                                    'w-full px-4 py-3 rounded-xl border',
-                                    errors.startDate
-                                      ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500'
-                                      : 'border-gray-200 focus:ring-green-500/20 focus:border-green-500',
-                                    'focus:outline-none focus:ring-2 transition-all'
-                                  )}
-                                  {...register('startDate')}
-                                />
-                                {errors.startDate && (
-                                  <p className="mt-1 text-sm text-red-500">
-                                    {errors.startDate.message}
-                                  </p>
-                                )}
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  认领期限（月）
-                                </label>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="24"
-                                  className={cn(
-                                    'w-full px-4 py-3 rounded-xl border',
-                                    errors.durationMonths
-                                      ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500'
-                                      : 'border-gray-200 focus:ring-green-500/20 focus:border-green-500',
-                                    'focus:outline-none focus:ring-2 transition-all'
-                                  )}
-                                  {...register('durationMonths')}
-                                />
-                                {errors.durationMonths && (
-                                  <p className="mt-1 text-sm text-red-500">
-                                    {errors.durationMonths.message}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex flex-wrap gap-3">
-                              <button
-                                type="submit"
-                                disabled={processingId === claim.id}
-                                className={cn(
-                                  'flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl font-medium',
-                                  'hover:bg-green-700 transition-colors',
-                                  processingId === claim.id && 'opacity-70 cursor-not-allowed'
-                                )}
-                              >
-                                <Check className="w-5 h-5" />
-                                通过申请
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleReject(claim.id)}
-                                disabled={processingId === claim.id}
-                                className={cn(
-                                  'flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-xl font-medium',
-                                  'hover:bg-red-700 transition-colors',
-                                  processingId === claim.id && 'opacity-70 cursor-not-allowed'
-                                )}
-                              >
-                                <X className="w-5 h-5" />
-                                拒绝
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleMoveToWaiting(claim.id)}
-                                disabled={processingId === claim.id}
-                                className={cn(
-                                  'flex items-center gap-2 px-6 py-3 bg-yellow-500 text-white rounded-xl font-medium',
-                                  'hover:bg-yellow-600 transition-colors',
-                                  processingId === claim.id && 'opacity-70 cursor-not-allowed'
-                                )}
-                              >
-                                <Hourglass className="w-5 h-5" />
-                                移入等待
-                              </button>
-                            </div>
-                          </form>
-                        </div>
+                <div className="divide-y divide-gray-100">
+                  {group.queue.map((item) => (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        'px-6 py-4 transition-colors',
+                        item.position === 1 && 'bg-gradient-to-r from-amber-50/50 to-transparent'
                       )}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={cn(
+                            'w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0',
+                            item.position === 1
+                              ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
+                              : 'bg-gray-100 text-gray-500'
+                          )}
+                        >
+                          {item.position}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-3 mb-1">
+                            <p className="font-semibold text-gray-800">
+                              {item.user?.username || '未知用户'}
+                            </p>
+                            <span className="text-xs text-gray-400">
+                              {item.user?.email}
+                            </span>
+                            {item.position === 1 && (
+                              <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                                下一位
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              申请时间：{new Date(item.createdAt).toLocaleString('zh-CN')}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm text-gray-600 line-clamp-1">
+                            <span className="text-gray-400 mr-1">种植计划：</span>
+                            {item.plantingPlan}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => handleAssignNow(item.id)}
+                            disabled={processingId === item.id}
+                            className="px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-xs font-medium hover:from-green-700 hover:to-emerald-700 transition-all flex items-center gap-1 disabled:opacity-70"
+                            title="直接分配"
+                          >
+                            <Zap className="w-3.5 h-3.5" />
+                            立即分配
+                          </button>
+                          <button
+                            onClick={() => handleMoveUp(item.id)}
+                            disabled={processingId === item.id || item.position === 1}
+                            className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="提前一位"
+                          >
+                            <ArrowUp className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleRemoveFromWaiting(item.id)}
+                            disabled={processingId === item.id}
+                            className="p-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-all disabled:opacity-70"
+                            title="移出队列"
+                          >
+                            <UserMinus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <button
-                onClick={() => setShowWaitingList(!showWaitingList)}
-                className="w-full p-6 flex items-center justify-between hover:bg-gray-50 transition-colors"
-              >
-                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                  <Hourglass className="w-5 h-5 text-yellow-500" />
-                  等待列表
-                  <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-700 text-sm rounded-full">
-                    {waitingClaims.length}
-                  </span>
-                </h2>
-                {showWaitingList ? (
-                  <ChevronUp className="w-5 h-5 text-gray-400" />
-                ) : (
-                  <ChevronDown className="w-5 h-5 text-gray-400" />
-                )}
-              </button>
-
-              {showWaitingList && (
-                <div className="px-6 pb-6 border-t border-gray-100">
-                  {waitingClaims.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">暂无等待中的申请</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3 pt-5">
-                      {waitingClaims.map((claim, index) => (
-                        <div
-                          key={claim.id}
-                          className="flex items-center justify-between p-4 bg-yellow-50 rounded-xl border border-yellow-100"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-yellow-200 rounded-full flex items-center justify-center font-bold text-yellow-700">
-                              {index + 1}
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-800">
-                                {claim.user?.username || '未知用户'}
-                              </p>
-                              <p className="text-sm text-gray-500">
-                                地块 {claim.plot?.plotNumber || '未知'} ·{' '}
-                                {new Date(claim.createdAt).toLocaleDateString('zh-CN')}
-                              </p>
-                            </div>
-                          </div>
-                          <StatusBadge status={claim.status} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+              </div>
+            ))}
           </div>
         )}
+
+        <div className="mt-8 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-5 border border-blue-100">
+          <div className="flex gap-3">
+            <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-gray-600">
+              <p className="font-medium text-gray-800 mb-1">等待队列规则</p>
+              <ul className="space-y-1 list-disc list-inside">
+                <li>当有园丁不续期或释放地块时，等待队列的第一位申请人将自动接手</li>
+                <li>每位申请人在同一地块只能排在一个位置，排队顺序按申请时间确定</li>
+                <li>管理员可以调整排队顺序、移出队列或直接分配给某位申请人</li>
+                <li>被移出队列的申请将被标记为已拒绝，申请人需要重新提交申请</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

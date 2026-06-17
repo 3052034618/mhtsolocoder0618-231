@@ -145,10 +145,14 @@ export const claims = {
     })
   },
 
-  approveClaim: async (id: number, data: { startDate: string; durationMonths: number }): Promise<Claim> => {
+  approveClaim: async (id: number, data?: { startDate?: string; durationMonths?: number }): Promise<Claim> => {
+    const body = data || {
+      startDate: new Date().toISOString().split('T')[0],
+      durationMonths: 12
+    };
     return requestData<Claim>(`/claims/${id}/approve`, {
       method: 'PUT',
-      body: JSON.stringify(data)
+      body: JSON.stringify(body)
     })
   },
 
@@ -168,6 +172,34 @@ export const claims = {
   releaseClaim: async (id: number): Promise<Claim> => {
     return requestData<Claim>(`/claims/${id}/release`, {
       method: 'PUT'
+    })
+  },
+
+  moveUpWaiting: async (id: number): Promise<Claim> => {
+    return requestData<Claim>(`/claims/${id}/move-up`, {
+      method: 'PUT'
+    })
+  },
+
+  removeFromWaiting: async (id: number): Promise<Claim> => {
+    return requestData<Claim>(`/claims/${id}/remove-from-waiting`, {
+      method: 'PUT'
+    })
+  },
+
+  assignNow: async (id: number, data?: { durationMonths?: number }): Promise<Claim> => {
+    return requestData<Claim>(`/claims/${id}/assign-now`, {
+      method: 'PUT',
+      body: JSON.stringify(data || {})
+    })
+  },
+
+  getWaitingGrouped: async (): Promise<Array<{
+    plot: Plot;
+    queue: Array<Claim & { position: number }>;
+  }>> => {
+    return requestData(`/claims/waiting/grouped`, {
+      method: 'GET'
     })
   },
 
